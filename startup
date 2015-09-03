@@ -1,0 +1,4 @@
+#!/bin/bash
+exec forego start -r
+#exec consul agent -server -bootstrap-expect 1 -data-dir /tmp/consul
+#exec docker-gen -interval 10 -watch -notify "ruby /tmp/ringleader.rb" ringleader.tmpl /tmp/ringleader.rb

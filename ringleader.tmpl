@@ -1,0 +1,52 @@
+#!/usr/bin/ruby
+require "diplomat"
+require "json"
+
+
+
+client = Diplomat
+directories = []
+ringleader_directory = "ringleader"
+
+#this is necessary because diplomat won't print out a recursive list of 1 key,
+#so if you only setup one service, then tear it down, it won't get removed.
+client.put("#{ringleader_directory}/#{ringleader_directory}", "1")
+
+{{ range $key, $containers := groupBy $ "Labels.etcd_conf_key" }}
+  {{ range $index, $container := $containers }}
+
+directory = "{{$container.Labels.etcd_conf_key}}"
+config_data = JSON.parse(%q({{$container.Labels.etcd_conf_data}}))
+directories << directory
+client.put("#{ringleader_directory}/#{directory}", "1")
+config_data.each do |key, value|
+  composite_key = "#{directory}/#{key}"
+  current_value = nil
+  begin
+    current_value = client.get(composite_key)
+  rescue => Diplomat::KeyNotFound
+  end
+
+  if current_value != value
+    client.put(composite_key, value)
+  end
+end
+
+  {{ end }}
+{{ end }}
+
+#remove container configs that are no longer running
+begin
+  keys_records = client.get(ringleader_directory, recurse: true)
+  keys_records.each do |node|
+    directory = node[:key].split("/").last
+    if !directories.include?(directory)
+      client.get("#{directory}", recurse: true).each do |kv|
+        client.delete(kv[:key])
+      end
+      client.delete("#{ringleader_directory}/#{directory}")
+    end
+  end
+rescue => Diplomat::KeyNotFound
+  puts "No existing keys to manage"
+end
