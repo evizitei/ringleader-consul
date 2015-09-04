@@ -5,18 +5,18 @@ require "json"
 
 
 client = Diplomat
-directories = []
 ringleader_directory = "ringleader"
+directories = [ringleader_directory]
 
 #this is necessary because diplomat won't print out a recursive list of 1 key,
 #so if you only setup one service, then tear it down, it won't get removed.
 client.put("#{ringleader_directory}/#{ringleader_directory}", "1")
 
-{{ range $key, $containers := groupBy $ "Labels.etcd_conf_key" }}
+{{ range $key, $containers := groupBy $ "Labels.consul_conf_key" }}
   {{ range $index, $container := $containers }}
 
-directory = "{{$container.Labels.etcd_conf_key}}"
-config_data = JSON.parse(%q({{$container.Labels.etcd_conf_data}}))
+directory = "{{$container.Labels.consul_conf_key}}"
+config_data = JSON.parse(%q({{$container.Labels.consul_conf_data}}))
 directories << directory
 client.put("#{ringleader_directory}/#{directory}", "1")
 config_data.each do |key, value|
